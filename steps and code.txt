@@ -1,0 +1,265 @@
+01) Introduction to the application : use the starter code from github
+=======================================================================
+02) Adding a header and footer
+==========================
+create a new folder name structure with two file Footer.js and Header.js
+
+src\structure\Footer.js
+src\structure\Header.js
+
+Header.js
+---------
+import React from 'react';
+import iceCream from '../assets/img/ultimate-ice-cream.svg';   <--- webpack will take care wheere to put this image url.
+
+const Header = () => (
+  <header>
+    <h1>
+      <img src={iceCream} alt="" />
+      Awesome Ice Cream
+    </h1>
+  </header>
+);
+
+export default Header;
+
+Footer.js
+---------
+import React from 'react';
+
+const Footer = () => (
+  <footer>
+    <span>&copy; Awesome Ice Cream Dashboard</span>
+  </footer>
+);
+
+export default Footer;
+
+App.js
+------
+import React from 'react';
+import Footer from './structure/Footer';
+import Header from './structure/Header';
+import './styles/ice-cream.scss';
+
+const App = () => {
+  return (
+    <>
+      <Header />
+      <Footer />
+    </>
+  );
+};
+
+export default App;
+
+03 Displaying the menu
+------------------------
+src\data\iceCreamData.js
+src\ice-cream\Menu.js
+
+1) Create a new folder for api call services  with diffrent folder `data`, so our all api call will be placing one place.
+2) create a smart or functional statefull component with diffrent folder `ice-cream` which will show the menu.
+
+iceCreamData.js
+-----------------
+import axios from 'axios';
+
+export const getMenu = () => {
+  return axios.get('http://localhost:5000/menuData').then(response => {
+    return response.data.sort((a, b) => {
+      if (a.iceCream.name < b.iceCream.name) {
+        return -1;
+      }
+      if (a.iceCream.name > b.iceCream.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+Menu.js
+--------
+import React, { useState, useEffect } from 'react';
+import { getMenu } from '../data/iceCreamData';
+import Helmet from 'react-helmet';
+
+const Menu = () => {
+  const [menu, setMenu] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getMenu().then(menuData => {
+      if (isMounted) {
+        setMenu(menuData);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Rock your taste buds with one of these! | Awesome Ice Cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Rock your taste buds with one of these!</h2>
+
+      {menu.length > 0 ? (
+        <ul className="container">
+          {menu.map(
+            ({ id, iceCream, price, description, inStock, quantity }) => (
+              <li key={id.toString()}>
+                <section className="card">
+                  <div className="image-container"></div>
+                  <div className="text-container">
+                    <h3>{iceCream.name}</h3>
+                    <div className="content card-content">
+                      <p className="price">{`$${price.toFixed(2)}`}</p>
+                      <p className={`stock${inStock ? '' : ' out'}`}>
+                        {inStock
+                          ? `${quantity} in stock`
+                          : 'Currently out of stock!'}
+                      </p>
+                      <p className="description">{description}</p>
+                    </div>
+                  </div>
+                </section>
+              </li>
+            )
+          )}
+        </ul>
+      ) : (
+        <p>Menu is empty! The sadness :( !!</p>
+      )}
+    </main>
+  );
+};
+
+export default Menu;
+
+
+
+App.js
+-----
+import React from 'react';
+import Footer from './structure/Footer';
+import Header from './structure/Header';
+import Menu from './ice-cream/Menu';
+import './styles/ice-cream.scss';
+
+const App = () => {
+  return (
+    <>
+      <Header />
+      <Menu />
+      <Footer />
+    </>
+  );
+};
+
+export default App;
+
+04 Displaying the ice cream images
+====================================
+Create a new component for loading icecream 
+load all the ice cream from based on id folder m from public folder , react create app directly give access of the public folder so we can directly access the filefrom there
+
+src\ice-cream\IceCreamImage.js
+
+IceCreamImage.js
+-----------------
+import React from 'react';
+import PropTypes from 'prop-types';
+
+const IceCreamImage = ({ iceCreamId }) => {
+  return (
+    iceCreamId != null && (
+      <img
+        src={`/ice-cream-images/ice-cream-${iceCreamId.toString()}.svg`}
+        alt=""
+      />
+    )
+  );
+};
+
+IceCreamImage.propTypes = {
+  iceCreamId: PropTypes.number.isRequired,
+};
+
+export default IceCreamImage;
+
+
+Now add this component to Menu component
+
+Menu.js
+------
+import React, { useState, useEffect } from 'react';
+import { getMenu } from '../data/iceCreamData';
+import Helmet from 'react-helmet';
+import IceCreamImage from './IceCreamImage';
+
+const Menu = () => {
+  const [menu, setMenu] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getMenu().then(menuData => {
+      if (isMounted) {
+        setMenu(menuData);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Rock your taste buds with one of these! | Awesome Ice Cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Rock your taste buds with one of these!</h2>
+
+      {menu.length > 0 ? (
+        <ul className="container">
+          {menu.map(
+            ({ id, iceCream, price, description, inStock, quantity }) => (
+              <li key={id.toString()}>
+                <section className="card">
+                  <div className="image-container">
+                    <IceCreamImage iceCreamId={iceCream.id} />    <------- IceCreamImage component added, there
+                  </div>
+                  <div className="text-container">
+                    <h3>{iceCream.name}</h3>
+                    <div className="content card-content">
+                      <p className="price">{`$${price.toFixed(2)}`}</p>
+                      <p className={`stock${inStock ? '' : ' out'}`}>
+                        {inStock
+                          ? `${quantity} in stock`
+                          : 'Currently out of stock!'}
+                      </p>
+                      <p className="description">{description}</p>
+                    </div>
+                  </div>
+                </section>
+              </li>
+            )
+          )}
+        </ul>
+      ) : (
+        <p>Menu is empty! The sadness :( !!</p>
+      )}
+    </main>
+  );
+};
+
+export default Menu;
