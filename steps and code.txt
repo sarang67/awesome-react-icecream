@@ -263,3 +263,372 @@ const Menu = () => {
 };
 
 export default Menu;
+
+
+05 Adding a loading message
+-------------------------
+1) create a new component ---> LoaderMessage.js
+src\structure\LoaderMessage.js
+
+2) update your Menu.js to use this component
+
+
+LoaderMessage.js
+---------------
+import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+
+const LoaderMessage = ({ loadingMsg, isLoading }) => {
+  const [showLoadingMessage, setShowLoadingMessage] = useState(false);
+
+  useEffect(() => {
+    let loadingMessageDelay;
+
+    if (isLoading) {
+      loadingMessageDelay = setTimeout(() => {
+        setShowLoadingMessage(true);
+      }, 400);
+    }
+
+    return () => {
+      clearTimeout(loadingMessageDelay);
+      setShowLoadingMessage(false);
+    };
+  }, [isLoading]);
+
+  return (
+    <div>
+      {showLoadingMessage ? <p className="loading">{loadingMsg}</p> : null}
+    </div>
+  );
+};
+
+LoaderMessage.propTypes = {
+  loadingMsg: PropTypes.string.isRequired,
+  isLoading: PropTypes.bool,
+};
+
+export default LoaderMessage;
+
+
+
+Menu.js
+--------
+import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet";
+import { getMenu } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+import IcecreamImage from "./IceCreamImage";
+
+const Menu = () => {
+  const [menu, setMenu] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);  <--- added state for loader message
+
+  useEffect(() => {
+    let isMounted = true;
+    getMenu().then((menudata) => {
+      if (isMounted) {
+        setMenu(menudata);
+        setIsLoading(false);  <--- off the state,  for loader message
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Rock your taste buds with one of these | Awesome ice cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Rock your taste buds with one of these</h2>
+      <LoaderMessage loadingMsg="Loading menu." isLoading={isLoading} />   <--- Use here loader component
+      {menu.length > 0 ? (
+        <ul className="container">
+          {menu.map(
+            ({ id, iceCream, inStock, quantity, price, description }) => {
+              return (
+                <li key={id.toString()}>
+                  <section className="card">
+                    <div className="image-container">
+                      <IcecreamImage iceCreamId={id} />
+                    </div>
+                    <div className="text-container">
+                      <h3>{iceCream.name}</h3>
+                      <div className="content card-content">
+                        <p className="price">{`$${price.toFixed(2)}`}</p>
+                        <p className={`stock${inStock ? "" : " out"}`}>
+                          {inStock
+                            ? `${quantity} in stock`
+                            : "currently out of stock !!!"}
+                        </p>
+                        <p className="description">{description}</p>
+                      </div>
+                    </div>
+                  </section>
+                </li>
+              );
+            }
+          )}
+        </ul>
+      ) : (
+        !isLoading && <p>Menu is Empty ! the sadness :( !!! </p>  <--- sho footer based on loder component
+      )}
+    </main>
+  );
+};
+
+export default Menu;
+
+
+
+For Demoing the delay we can change the two file below, and can test
+-------------------------------------------------------------------
+server\index.js  --> update this endpoint using setTimeout
+src\data\iceCreamData.js --> update the the endpoint
+
+index.js
+---------
+app.get("/api/menu", (req, res) => {
+  setTimeout(() => {
+    res.send(menuData); 
+  }, 3000); 
+  // res.send(menuData);   <-- updatethis with seTimeout
+});
+
+
+
+iceCreamData.js
+-----------------
+import axios from "axios";
+
+// **************node server end point**********
+const GET_MENU = `/api/menu`;
+// **********json server (db.json) end point ***********
+//const GET_MENU = `http://localhost:5000/menuData`;
+
+export const getMenu = () => {
+  return axios.get(`${GET_MENU}`).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.iceCream.name < b.iceCream.name) {
+        return -1;
+      }
+      if (a.iceCream.name > b.iceCream.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+
+
+06 Routing to an edit component , make routing for edit icecream
+===============================================================
+1) create a new component (EditIceCream.js) src\ice-cream\EditIceCream.js
+2) update App.js for integrate routing for appilcation
+3) update Menu.js for Link navigation using via section and heaer link.
+
+
+EditIceCream.js
+---------------
+import React from "react";
+import { Helmet } from "react-helmet";
+
+const EditIceCream = () => {
+  return (
+    <main>
+      <Helmet>
+        <title>Update this component | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">
+        Edit ice cream component Update this component
+      </h2>
+    </main>
+  );
+};
+
+export default EditIceCream;
+
+App.js
+-------
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Route,
+  Redirect,
+  Switch,
+} from "react-router-dom";
+import EditIceCream from "./ice-cream/EditIceCream";
+
+import Menu from "./ice-cream/Menu";
+import Footer from "./structure/Footer";
+import Header from "./structure/Header";
+import "./styles/ice-cream.css";
+
+function App() {
+  return (
+    <Router>   <---- take ur application inside routing
+      <Header />
+      <Switch>   <---- use switch for redirection
+        <Route path="/" component={Menu} exact />  <---- define route
+        <Route path="/menu-items/:menuItemId" component={EditIceCream} exact /> <---- define route
+        <Redirect to="/" />   <---- define route for default direction
+      </Switch>   <---- update
+      <Footer />
+    </Router>
+  );
+}
+
+export default App;
+
+Menu.js
+-------
+import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet";
+import { Link } from "react-router-dom";
+import { getMenu } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+import IcecreamImage from "./IceCreamImage";
+import PropTypes from "prop-types";
+
+const Menu = ({ history }) => {   <--- use history  props given by Route
+  const [menu, setMenu] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getMenu().then((menudata) => {
+      if (isMounted) {
+        setMenu(menudata);
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const onItemClickHandler = (to) => {   <--- add this for section
+    history.push(to);
+  };
+
+  const onLinkClickHandler = (e) => {    <--- use this to stoo propagation while click on anchor
+    //This is done to avoid the click handler of the <section>
+    //firing and placing two browse entries in browser history
+    e.stopPropagation();
+  };
+
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Rock your taste buds with one of these | Awesome ice cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Rock your taste buds with one of these</h2>
+      <LoaderMessage loadingMsg="Loading menu." isLoading={isLoading} />
+      {menu.length > 0 ? (
+        <ul className="container">
+          {menu.map(
+            ({ id, iceCream, inStock, quantity, price, description }) => {
+              return (
+                <li key={id.toString()}>
+                  <section          <--- make link this section as well
+                    className="card"
+                    onClick={() =>
+                      onItemClickHandler(`/menu-items/${id.toString()}`)
+                    }
+                  >
+                    <div className="image-container">
+                      <IcecreamImage iceCreamId={id} />
+                    </div>
+                    <div className="text-container">
+                      <h3>
+                        <Link   							<--- make link here 
+                          to={`/menu-items/${id.toString()}`}
+                          onClick={onLinkClickHandler}
+                        >
+                          {iceCream.name}
+                        </Link>
+                      </h3>
+                      <div className="content card-content">
+                        <p className="price">{`$${price.toFixed(2)}`}</p>
+                        <p className={`stock${inStock ? "" : " out"}`}>
+                          {inStock
+                            ? `${quantity} in stock`
+                            : "currently out of stock !!!"}
+                        </p>
+                        <p className="description">{description}</p>
+                      </div>
+                    </div>
+                  </section>
+                </li>
+              );
+            }
+          )}
+        </ul>
+      ) : (
+        !isLoading && <p>Menu is Empty ! the sadness :( !!! </p>
+      )}
+    </main>
+  );
+};
+
+Menu.prototype = {   <--- use the props validation
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+  }),
+};
+export default Menu;
+
+
+07 Creating the main navigation
+-------------------------------
+one component Header.js is updated
+
+we can navigate web history using back forward from browser feature on top <- ->, but we want to implement same functionality in our application to go home navigation
+
+here for navigation block , we will not use Link , because we have better component from React router dom , the name of this component is NavLink , so this work same as Link , but when rout path match this use activate class for us, so we can make some class activate in our css and this will automatically will be applied there.
+
+if you event dont give activeClassName="active" , it bedefault apply this active class , you can give any class name instead. so when route path will be active class will be applied , and no then class will not be applied.
+
+and it is more efficient when its come to accessibility, its add aria-current as well.
+
+Header.js
+----------
+import React from "react";
+import { Link, NavLink } from "react-router-dom";
+import icecream from "../assets/img/ultimate-ice-cream.svg";
+
+const Header = () => {
+  return (
+    <header>
+      <h1>
+        <img src={icecream} alt="" />
+        Awesome ice cream.
+      </h1>
+      <nav>
+        <ul>
+          <NavLink to="/" activeClassName="active" exact>
+            Menu
+          </NavLink>
+
+          {/* <Link to="/" exact>   ---> dont use gere , better optionwe have NavLink
+            Menu{" "}
+          </Link> */}
+        </ul>
+      </nav>
+    </header>
+  );
+};
+
+export default Header;
+

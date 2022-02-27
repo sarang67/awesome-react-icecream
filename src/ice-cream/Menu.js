@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
+import { Link } from "react-router-dom";
 import { getMenu } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
 import IcecreamImage from "./IceCreamImage";
+import propTypes from "prop-types";
 
-const Menu = () => {
+const Menu = ({ history }) => {
   const [menu, setMenu] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
     getMenu().then((menudata) => {
       if (isMounted) {
         setMenu(menudata);
+        setIsLoading(false);
       }
     });
 
@@ -18,6 +23,15 @@ const Menu = () => {
       isMounted = false;
     };
   }, []);
+
+  const onItemClickhandler = (to) => {
+    console.log(to);
+    history.push(to);
+  };
+
+  const onLinkClickhandler = (event) => {
+    event.stopPropagation();
+  };
 
   return (
     <main>
@@ -28,19 +42,31 @@ const Menu = () => {
       </Helmet>
 
       <h2 className="main-heading">Rock your taste buds with one of these</h2>
-
+      <LoaderMessage loadingMessage="Loading Menu." isLoading={isLoading} />
       {menu.length > 0 ? (
         <ul className="container">
           {menu.map(
             ({ id, iceCream, inStock, quantity, price, description }) => {
               return (
                 <li key={id.toString()}>
-                  <section className="card">
+                  <section
+                    className="card"
+                    onClick={() =>
+                      onItemClickhandler(`/menu-item/${id.toString()}`)
+                    }
+                  >
                     <div className="image-container">
                       <IcecreamImage iceCreamId={id} />
                     </div>
                     <div className="text-container">
-                      <h3>{iceCream.name}</h3>
+                      <h3>
+                        <Link
+                          to={`/menu-item/${id.toString()}`}
+                          onClick={onLinkClickhandler}
+                        >
+                          {iceCream.name}
+                        </Link>
+                      </h3>
                       <div className="content card-content">
                         <p className="price">{`$${price.toFixed(2)}`}</p>
                         <p className={`stock${inStock ? "" : " out"}`}>
@@ -58,10 +84,13 @@ const Menu = () => {
           )}
         </ul>
       ) : (
-        <p>Menu is Empty ! the sadness :( !!! </p>
+        !isLoading && <p>Menu is Empty ! the sadness :( !!! </p>
       )}
     </main>
   );
 };
 
+Menu.prototype = {
+  history: propTypes.shape({ push: propTypes.func.isRequired }),
+};
 export default Menu;
