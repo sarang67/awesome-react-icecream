@@ -1,12 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import PropTypes from "prop-types";
-import { getMenuItem, putMenuItem } from "../data/iceCreamData";
+import { deleteMenuItem, getMenuItem, putMenuItem } from "../data/iceCreamData";
 import LoaderMessage from "../structure/LoaderMessage";
 
 import IceCreamImage from "./IceCreamImage";
 import "../styles/forms-spacer.css";
 import useUniqueIds from "../hooks/useUniqueIds";
+import {
+  validateDescription,
+  validateQuantity,
+  validatePrice,
+} from "../utils/validators";
+import useValidators from "../hooks/useValidation";
+import ErrorContainer from "./ErrorContainer";
 
 const EditIceCream = ({ match, history }) => {
   const [menuItem, setMenuItem] = useState({
@@ -17,9 +24,23 @@ const EditIceCream = ({ match, history }) => {
     iceCream: {},
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const isMounted = useRef(true);
 
   const [descriptionId, stockId, quantityId, priceId] = useUniqueIds(4);
+
+  const descriptionError = useValidators(
+    menuItem.description,
+    validateDescription
+  );
+
+  const quantityError = useValidators(
+    menuItem.quantity,
+    validateQuantity,
+    menuItem.inStock
+  );
+
+  const priceError = useValidators(menuItem.price, validatePrice);
 
   useEffect(() => {
     return () => {
@@ -71,23 +92,36 @@ const EditIceCream = ({ match, history }) => {
   };
 
   const onSubmitHandler = (e) => {
+    setHasSubmitted(true);
+
+    console.log(descriptionError);
+    console.log(quantityError);
+    console.log(priceError);
+
     e.preventDefault();
+    if (!descriptionError && !quantityError && !priceError) {
+      const { id, price, inStock, quantity, description, iceCream } = menuItem;
+      const submitItem = {
+        id,
+        iceCream,
+        price: parseFloat(price),
+        inStock,
+        quantity: parseInt(quantity),
+        description,
+      };
 
-    const { id, price, inStock, quantity, description, iceCream } = menuItem;
-    const submitItem = {
-      id,
-      iceCream,
-      price: parseFloat(price),
-      inStock,
-      quantity: parseInt(quantity),
-      description,
-    };
-
-    putMenuItem(submitItem).then(() => {
-      history.push("/", { focus: true });
-    });
+      putMenuItem(submitItem).then(() => {
+        history.push("/");
+      });
+    }
   };
 
+  const onDeleteHandler = () => {
+    deleteMenuItem(match.params.menuItemId).then((data) => {
+      console.log(data);
+      history.replace("/");
+    });
+  };
   return (
     <main>
       <Helmet>
@@ -96,7 +130,10 @@ const EditIceCream = ({ match, history }) => {
       <h2 className="main-heading">
         Edit ice cream component Update this component
       </h2>
-      <LoaderMessage loadingMsg="Loading ice cream." isLoading={isLoading} />
+      <LoaderMessage
+        loadingMessage="Loading ice cream."
+        isLoading={isLoading}
+      />
 
       {!isLoading && (
         <div className="form-frame">
@@ -110,13 +147,19 @@ const EditIceCream = ({ match, history }) => {
             </dl>
             <form onSubmit={onSubmitHandler}>
               <label htmlFor={descriptionId}>Description :</label>
-              <textarea
-                id={descriptionId}
-                name="description"
-                rows="3"
-                onChange={onChangeHandler}
-                value={menuItem.description}
-              />
+              <ErrorContainer
+                errorText={descriptionError}
+                hasSubmitted={hasSubmitted}
+              >
+                <textarea
+                  id={descriptionId}
+                  name="description"
+                  rows="3"
+                  onChange={onChangeHandler}
+                  value={menuItem.description}
+                />
+              </ErrorContainer>
+
               <label htmlFor={stockId}>In Stock :</label>
               <div className="checkbox-wrapper">
                 <input
@@ -129,31 +172,48 @@ const EditIceCream = ({ match, history }) => {
                 <div className="checkbox-wrapper-checked" />
               </div>
               <label htmlFor={quantityId}>Quantity :</label>
-              <select
-                id={quantityId}
-                name="quantity"
-                onChange={onChangeHandler}
-                value={menuItem.quantity}
+              <ErrorContainer
+                errorText={quantityError}
+                hasSubmitted={hasSubmitted}
               >
-                <option value="0">0</option>
-                <option value="10">10</option>
-                <option value="20">20</option>
-                <option value="30">30</option>
-                <option value="40">40</option>
-                <option value="50">50</option>
-              </select>
+                <select
+                  id={quantityId}
+                  name="quantity"
+                  onChange={onChangeHandler}
+                  value={menuItem.quantity}
+                >
+                  <option value="0">0</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="30">30</option>
+                  <option value="40">40</option>
+                  <option value="50">50</option>
+                </select>
+              </ErrorContainer>
               <label htmlFor={priceId}>Price :</label>
-              <input
-                id={priceId}
-                type="number"
-                step="0.01"
-                name="price"
-                onChange={onChangeHandler}
-                value={menuItem.price}
-              />
+              <ErrorContainer
+                errorText={priceError}
+                hasSubmitted={hasSubmitted}
+              >
+                <input
+                  id={priceId}
+                  type="number"
+                  step="0.01"
+                  name="price"
+                  onChange={onChangeHandler}
+                  value={menuItem.price}
+                />
+              </ErrorContainer>
               <div className="button-container">
                 <button className="ok" type="submit">
                   Save
+                </button>
+                <button
+                  className="warning"
+                  type="button"
+                  onClick={onDeleteHandler}
+                >
+                  Delete
                 </button>
               </div>
             </form>

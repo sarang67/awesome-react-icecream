@@ -6,6 +6,7 @@ import {
   Switch,
 } from "react-router-dom";
 import EditIceCream from "./ice-cream/EditIcecream";
+import IceCreams from "./ice-cream/iceCreams";
 import Menu from "./ice-cream/Menu";
 import Footer from "./structure/Footer";
 import Header from "./structure/Header";
@@ -17,6 +18,7 @@ function App() {
       <Header />
       <Switch>
         <Route path="/" component={Menu} exact />
+        <Route path="/ice-creams" component={IceCreams} />
         <Route path="/menu-item/:menuItemId" component={EditIceCream} exact />
         <Redirect to="/" />
       </Switch>

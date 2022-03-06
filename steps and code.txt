@@ -1056,3 +1056,964 @@ const useUniqueIds = (count) => {
 
 export default useUniqueIds;
 
+
+10 Building a validation system
+================================
+1) create a utils folder for  validators.js file
+
+src\utils\validators.js
+-----------------------
+write all the field validations condition here.
+
+export const validateDescription = (description) =>
+  description ? null : "You must enter a description";
+
+export const validateQuantity = (quantity, inStock) =>
+  inStock && quantity === "0"
+    ? "An in stock item should have a quantity"
+    : null;
+
+export const validatePrice = (price) => {
+  const regex = /^[0-9]+(\.[0-9][0-9])$/;
+
+  if (!price || price === "0.00") {
+    return "You must enter a price";
+  } else if (!regex.test(price.trim())) {
+    return "Please enter a valid price";
+  }
+  return null;
+};
+
+
+
+src\hooks\useValidation.js
+---------------------------
+make a new hooks (useValidation.js) for check validation so it can be used multiple places.
+
+import { useState, useEffect } from "react";
+
+const useValidation = (value, validatorFn, compareValue = null) => {
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setError(validatorFn(value, compareValue));
+  }, [value, compareValue, validatorFn]);
+
+  return error;
+};
+
+export default useValidation;
+
+src\ice-cream\EditIcecream.js
+------------------------------
+import above hooks and all three validator function and use it.
+
+import React, { useState, useRef, useEffect } from "react";
+import { Helmet } from "react-helmet";
+import PropTypes from "prop-types";
+import { getMenuItem, putMenuItem } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+import IceCreamImage from "./IceCreamImage";           
+import "../styles/forms-spacer.css";
+import useUniqueIds from "../hooks/useUniqueIds";
+
+import {                       <-------- 1) import here
+  validateDescription,
+  validatePrice,
+  validateQuantity,
+} from "../utils/validators";
+import useValidation from "../hooks/useValidation";
+
+const EditIceCream = ({ match, history }) => {
+  const [menuItem, setMenuItem] = useState({
+    price: "0.00",
+    inStock: true,
+    quantity: "0",
+    description: "",
+    iceCream: {},
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const isMounted = useRef(true);
+
+  const [descriptionId, stockId, quantityId, priceId] = useUniqueIds(4);
+
+  const descriptionError = useValidation(      <-------- 2) use here
+    menuItem.description,
+    validateDescription
+  );
+  const quantityError = useValidation(
+    menuItem.quantity,
+    validateQuantity,
+    menuItem.inStock
+  );
+  const priceError = useValidation(menuItem.price, validatePrice);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getMenuItem(match.params.menuItemId)
+      .then(({ id, price, inStock, quantity, description, iceCream }) => {
+        if (isMounted.current) {
+          setMenuItem({
+            id,
+            price: price.toFixed(2),
+            inStock,
+            quantity: quantity.toString(),
+            description,
+            iceCream,
+          });
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.response.status === 404 && isMounted.current) {
+          history.replace("/");
+        }
+      });
+  }, [match.params.menuItemId, history]);
+
+  console.log(menuItem);
+
+  const onChangeHandler = (e) => {
+    let newMenuItemData = {
+      ...menuItem,
+      [e.target.name]:
+        e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    };
+
+    if (e.target.name === "quantity") {
+      newMenuItemData.inStock = e.target.value !== "0";
+    }
+
+    if (e.target.name === "inStock" && !e.target.checked) {
+      newMenuItemData.quantity = "0";
+    }
+
+    setMenuItem(newMenuItemData);
+  };
+
+  const onSubmitHandler = (e) => {
+    e.preventDefault();
+
+    console.log(descriptionError);
+    console.log(quantityError);
+    console.log(priceError);
+
+    if (!descriptionError && !quantityError && !priceError) {       <------- 3) check in submit handler
+      const { id, price, inStock, quantity, description, iceCream } = menuItem;
+      const submitItem = {
+        id,
+        iceCream,
+        price: parseFloat(price),
+        inStock,
+        quantity: parseInt(quantity),
+        description,
+      };
+
+      putMenuItem(submitItem).then(() => {
+        history.push("/");
+      });
+    }
+  };
+
+  return (
+    <main>
+      <Helmet>
+        <title>Update this component | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">
+        Edit ice cream component Update this component
+      </h2>
+      <LoaderMessage
+        loadingMessage="Loading ice cream."  <--- correct this prop
+        isLoading={isLoading}
+      />
+
+      {!isLoading && (
+        <div className="form-frame">
+          <div className="image-container">
+            <IceCreamImage iceCreamId={menuItem.iceCream.id} />
+          </div>
+          <div className="form-container">
+            <dl>
+              <dt>Name :</dt>
+              <dd>{menuItem.iceCream.name}</dd>
+            </dl>
+            <form onSubmit={onSubmitHandler}>
+              <label htmlFor={descriptionId}>Description :</label>
+              <textarea
+                id={descriptionId}
+                name="description"
+                rows="3"
+                onChange={onChangeHandler}
+                value={menuItem.description}
+              />
+              <label htmlFor={stockId}>In Stock :</label>
+              <div className="checkbox-wrapper">
+                <input
+                  id={stockId}
+                  type="checkbox"
+                  name="inStock"
+                  onChange={onChangeHandler}
+                  checked={menuItem.inStock}
+                />
+                <div className="checkbox-wrapper-checked" />
+              </div>
+              <label htmlFor={quantityId}>Quantity :</label>
+              <select
+                id={quantityId}
+                name="quantity"
+                onChange={onChangeHandler}
+                value={menuItem.quantity}
+              >
+                <option value="0">0</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+                <option value="50">50</option>
+              </select>
+              <label htmlFor={priceId}>Price :</label>
+              <input
+                id={priceId}
+                type="number"
+                step="0.01"
+                name="price"
+                onChange={onChangeHandler}
+                value={menuItem.price}
+              />
+              <div className="button-container">
+                <button className="ok" type="submit">
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+};
+
+EditIceCream.propTypes = {
+  match: PropTypes.shape({
+    params: PropTypes.object.isRequired,
+  }),
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+    replace: PropTypes.func.isRequired,
+  }),
+};
+
+export default EditIceCream;
+
+
+11 Displaying validation messages
+===================================
+create a new component for ErorContainer.js .
+and comment css from form-spacer and from same css from icecream.css
+
+src\ice-cream\ErrorContainer.js
+------------------------------
+
+import React from "react";
+import PropTypes from "prop-types";
+
+const ErrorContainer = ({ children, errorText, hasSubmitted }) => (
+  <div className={errorText && hasSubmitted ? "error" : null}>
+    {children}
+    <div className="error-wrapper">
+      {errorText && hasSubmitted && <span>{errorText}</span>}
+    </div>
+  </div>
+);
+
+ErrorContainer.propTypes = {
+  children: PropTypes.node.isRequired,
+  errorText: PropTypes.string,
+  hasSubmitted: PropTypes.bool.isRequired,
+};
+
+export default ErrorContainer;
+
+EditIcecream.js
+----------------------------
+
+import React, { useState, useRef, useEffect } from "react";
+import { Helmet } from "react-helmet";
+import PropTypes from "prop-types";
+import { getMenuItem, putMenuItem } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+import IceCreamImage from "./IceCreamImage";
+import "../styles/forms-spacer.css";
+import useUniqueIds from "../hooks/useUniqueIds";
+
+import {
+  validateDescription,
+  validatePrice,
+  validateQuantity,
+} from "../utils/validators";
+import useValidation from "../hooks/useValidation";
+
+import ErrorContainer from "./ErrorContainer";  <--- import COmponent
+
+const EditIceCream = ({ match, history }) => {
+  const [menuItem, setMenuItem] = useState({
+    price: "0.00",
+    inStock: true,
+    quantity: "0",
+    description: "",
+    iceCream: {},
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  const isMounted = useRef(true);
+
+  const [descriptionId, stockId, quantityId, priceId] = useUniqueIds(4);
+
+  const descriptionError = useValidation(
+    menuItem.description,
+    validateDescription
+  );
+  const quantityError = useValidation(
+    menuItem.quantity,
+    validateQuantity,
+    menuItem.inStock
+  );
+  const priceError = useValidation(menuItem.price, validatePrice);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getMenuItem(match.params.menuItemId)
+      .then(({ id, price, inStock, quantity, description, iceCream }) => {
+        if (isMounted.current) {
+          setMenuItem({
+            id,
+            price: price.toFixed(2),
+            inStock,
+            quantity: quantity.toString(),
+            description,
+            iceCream,
+          });
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.response.status === 404 && isMounted.current) {
+          history.replace("/");
+        }
+      });
+  }, [match.params.menuItemId, history]);
+
+  console.log(menuItem);
+
+  const onChangeHandler = (e) => {
+    let newMenuItemData = {
+      ...menuItem,
+      [e.target.name]:
+        e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    };
+
+    if (e.target.name === "quantity") {
+      newMenuItemData.inStock = e.target.value !== "0";
+    }
+
+    if (e.target.name === "inStock" && !e.target.checked) {
+      newMenuItemData.quantity = "0";
+    }
+
+    setMenuItem(newMenuItemData);
+  };
+
+  const onSubmitHandler = (e) => {
+    e.preventDefault();
+    setHasSubmitted(true);         <--- do this for to check atleast submit has been clicked atleast once.
+ 
+    console.log(descriptionError);
+    console.log(quantityError);
+    console.log(priceError);
+
+    if (!descriptionError && !quantityError && !priceError) {  
+      const { id, price, inStock, quantity, description, iceCream } = menuItem;
+      const submitItem = {
+        id,
+        iceCream,
+        price: parseFloat(price),
+        inStock,
+        quantity: parseInt(quantity),
+        description,
+      };
+
+      putMenuItem(submitItem).then(() => {
+        history.push("/");
+      });
+    }
+  };
+
+  return (
+    <main>
+      <Helmet>
+        <title>Update this component | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">
+        Edit ice cream component Update this component
+      </h2>
+      <LoaderMessage
+        loadingMessage="Loading ice cream."
+        isLoading={isLoading}
+      />
+
+      {!isLoading && (
+        <div className="form-frame">
+          <div className="image-container">
+            <IceCreamImage iceCreamId={menuItem.iceCream.id} />
+          </div>
+          <div className="form-container">
+            <dl>
+              <dt>Name :</dt>
+              <dd>{menuItem.iceCream.name}</dd>
+            </dl>
+            <form onSubmit={onSubmitHandler}>
+              <label htmlFor={descriptionId}>Description :</label>
+              <ErrorContainer                                       <--- apply all the input places
+                errorText={descriptionError}
+                hasSubmitted={hasSubmitted}
+              >
+                <textarea
+                  id={descriptionId}
+                  name="description"
+                  rows="3"
+                  onChange={onChangeHandler}
+                  value={menuItem.description}
+                />
+              </ErrorContainer>
+              <label htmlFor={stockId}>In Stock :</label>
+              <div className="checkbox-wrapper">
+                <input
+                  id={stockId}
+                  type="checkbox"
+                  name="inStock"
+                  onChange={onChangeHandler}
+                  checked={menuItem.inStock}
+                />
+
+                <div className="checkbox-wrapper-checked" />
+              </div>
+              <label htmlFor={quantityId}>Quantity :</label>
+              <ErrorContainer
+                errorText={quantityError}
+                hasSubmitted={hasSubmitted}
+              >
+                <select
+                  id={quantityId}
+                  name="quantity"
+                  onChange={onChangeHandler}
+                  value={menuItem.quantity}
+                >
+                  <option value="0">0</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="30">30</option>
+                  <option value="40">40</option>
+                  <option value="50">50</option>
+                </select>
+              </ErrorContainer>
+              <label htmlFor={priceId}>Price :</label>
+              <ErrorContainer
+                errorText={priceError}
+                hasSubmitted={hasSubmitted}
+              >
+                <input
+                  id={priceId}
+                  type="number"
+                  step="0.01"
+                  name="price"
+                  onChange={onChangeHandler}
+                  value={menuItem.price}
+                />
+              </ErrorContainer>
+              <div className="button-container">
+                <button className="ok" type="submit">
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+};
+
+EditIceCream.propTypes = {
+  match: PropTypes.shape({
+    params: PropTypes.object.isRequired,
+  }),
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+    replace: PropTypes.func.isRequired,
+  }),
+};
+
+export default EditIceCream;
+
+
+12 Deleting a menu item
+=======================
+src\data\iceCreamData.js
+-------------------------
+
+import axios from "axios";
+
+// **************node server end point**********
+//const GET_MENU = `/api/menu`;
+
+// **********json server (db.json) end point ***********
+
+const GET_MENU = `http://localhost:5000/menuData`;
+
+export const getMenu = () => {
+  return axios.get(GET_MENU).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.iceCream.name < b.iceCream.name) {
+        return -1;
+      }
+      if (a.iceCream.name > b.iceCream.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+export const getMenuItem = (id) => {
+  return axios
+    .get(`${GET_MENU}/${id}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const putMenuItem = (menuItem) => {
+  return axios
+    .put(`${GET_MENU}/${menuItem.id}`, menuItem)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+ 
+export const deleteMenuItem = (id) => {       <------- add item delete call 
+  return axios.delete(`${GET_MENU}/${id}`).then((response) => {
+    return response.data;
+  });
+};
+
+
+EditIcecream.js
+-------------------------------
+import React, { useState, useRef, useEffect } from "react";
+import { Helmet } from "react-helmet";
+import PropTypes from "prop-types";
+import { deleteMenuItem, getMenuItem, putMenuItem } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+import IceCreamImage from "./IceCreamImage";
+import "../styles/forms-spacer.css";
+import useUniqueIds from "../hooks/useUniqueIds";
+
+import {
+  validateDescription,
+  validatePrice,
+  validateQuantity,
+} from "../utils/validators";
+import useValidation from "../hooks/useValidation";
+
+import ErrorContainer from "./ErrorContainer";
+
+const EditIceCream = ({ match, history }) => {
+  const [menuItem, setMenuItem] = useState({
+    price: "0.00",
+    inStock: true,
+    quantity: "0",
+    description: "",
+    iceCream: {},
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  const isMounted = useRef(true);
+
+  const [descriptionId, stockId, quantityId, priceId] = useUniqueIds(4);
+
+  const descriptionError = useValidation(
+    menuItem.description,
+    validateDescription
+  );
+  const quantityError = useValidation(
+    menuItem.quantity,
+    validateQuantity,
+    menuItem.inStock
+  );
+  const priceError = useValidation(menuItem.price, validatePrice);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getMenuItem(match.params.menuItemId)
+      .then(({ id, price, inStock, quantity, description, iceCream }) => {
+        if (isMounted.current) {
+          setMenuItem({
+            id,
+            price: price.toFixed(2),
+            inStock,
+            quantity: quantity.toString(),
+            description,
+            iceCream,
+          });
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.response.status === 404 && isMounted.current) {
+          history.replace("/");
+        }
+      });
+  }, [match.params.menuItemId, history]);
+
+  console.log(menuItem);
+
+  const onChangeHandler = (e) => {
+    let newMenuItemData = {
+      ...menuItem,
+      [e.target.name]:
+        e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    };
+
+    if (e.target.name === "quantity") {
+      newMenuItemData.inStock = e.target.value !== "0";
+    }
+
+    if (e.target.name === "inStock" && !e.target.checked) {
+      newMenuItemData.quantity = "0";
+    }
+
+    setMenuItem(newMenuItemData);
+  };
+
+  const onSubmitHandler = (e) => {
+    e.preventDefault();
+    setHasSubmitted(true);
+
+    console.log(descriptionError);
+    console.log(quantityError);
+    console.log(priceError);
+
+    if (!descriptionError && !quantityError && !priceError) {
+      const { id, price, inStock, quantity, description, iceCream } = menuItem;
+      const submitItem = {
+        id,
+        iceCream,
+        price: parseFloat(price),
+        inStock,
+        quantity: parseInt(quantity),
+        description,
+      };
+
+      putMenuItem(submitItem).then(() => {
+        history.push("/");
+      });
+    }
+  };
+
+  const onDeleteHandler = () => {                <--------------make delete call after deleting an item
+    deleteMenuItem(match.params.menuItemId).then(() => {
+      history.replace("/");
+    });
+  };
+
+  return (
+    <main>
+      <Helmet>
+        <title>Update this component | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">
+        Edit ice cream component Update this component
+      </h2>
+      <LoaderMessage
+        loadingMessage="Loading ice cream."
+        isLoading={isLoading}
+      />
+
+      {!isLoading && (
+        <div className="form-frame">
+          <div className="image-container">
+            <IceCreamImage iceCreamId={menuItem.iceCream.id} />
+          </div>
+          <div className="form-container">
+            <dl>
+              <dt>Name :</dt>
+              <dd>{menuItem.iceCream.name}</dd>
+            </dl>
+            <form onSubmit={onSubmitHandler}>
+              <label htmlFor={descriptionId}>Description :</label>
+              <ErrorContainer
+                errorText={descriptionError}
+                hasSubmitted={hasSubmitted}
+              >
+                <textarea
+                  id={descriptionId}
+                  name="description"
+                  rows="3"
+                  onChange={onChangeHandler}
+                  value={menuItem.description}
+                />
+              </ErrorContainer>
+              <label htmlFor={stockId}>In Stock :</label>
+              <div className="checkbox-wrapper">
+                <input
+                  id={stockId}
+                  type="checkbox"
+                  name="inStock"
+                  onChange={onChangeHandler}
+                  checked={menuItem.inStock}
+                />
+
+                <div className="checkbox-wrapper-checked" />
+              </div>
+              <label htmlFor={quantityId}>Quantity :</label>
+              <ErrorContainer
+                errorText={quantityError}
+                hasSubmitted={hasSubmitted}
+              >
+                <select
+                  id={quantityId}
+                  name="quantity"
+                  onChange={onChangeHandler}
+                  value={menuItem.quantity}
+                >
+                  <option value="0">0</option>
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="30">30</option>
+                  <option value="40">40</option>
+                  <option value="50">50</option>
+                </select>
+              </ErrorContainer>
+              <label htmlFor={priceId}>Price :</label>
+              <ErrorContainer
+                errorText={priceError}
+                hasSubmitted={hasSubmitted}
+              >
+                <input
+                  id={priceId}
+                  type="number"
+                  step="0.01"
+                  name="price"
+                  onChange={onChangeHandler}
+                  value={menuItem.price}
+                />
+              </ErrorContainer>
+              <div className="button-container">
+                <button className="ok" type="submit">
+                  Save
+                </button>
+                <button   <-------------- create button for delete item
+                  className="warning"
+                  type="button"
+                  onClick={onDeleteHandler}
+                >
+                  Delete
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+};
+
+EditIceCream.propTypes = {
+  match: PropTypes.shape({
+    params: PropTypes.object.isRequired,
+  }),
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+    replace: PropTypes.func.isRequired,
+  }),
+};
+
+export default EditIceCream;
+
+
+13 Fetching the stock ice cream list
+====================================
+create a new component  src\ice-cream\IceCreams.js
+
+IceCreams.js
+-------------
+import React, { useEffect, useState } from "react";
+import LoaderMessage from "../structure/LoaderMessage";
+import { getIceCreams } from "../data/iceCreamData";
+import Helmet from "react-helmet";
+
+const IceCreams = ({}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [iceCreams, setIceCreams] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    getIceCreams().then((iceCreams) => {
+      if (isMounted) {
+        setIceCreams(iceCreams);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  console.log(iceCreams);
+
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Choose Your Awesome Ice Cream and enjoy !!! | Awesome ice cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">
+        Choose Your Awesome Ice Cream and enjoy !!!{" "}
+      </h2>
+      <LoaderMessage
+        loadingMessage="Loading The stock List"
+        isLoading={isLoading}
+      />
+    </main>
+  );
+};
+
+export default IceCreams;
+
+
+src\data\iceCreamData.js
+------------------------
+import axios from "axios";
+
+// **************node server end point**********
+//const GET_MENU = `/api/menu`;
+
+// **********json server (db.json) end point ***********
+
+const GET_MENU = `http://localhost:5000/menuData`;
+const GET_ICE_CREAM = `http://localhost:5000/iceCreams`; <--- new endpoint there for ice cream
+
+export const getMenu = () => {
+  return axios.get(GET_MENU).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.iceCream.name < b.iceCream.name) {
+        return -1;
+      }
+      if (a.iceCream.name > b.iceCream.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+export const getMenuItem = (id) => {
+  return axios
+    .get(`${GET_MENU}/${id}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const putMenuItem = (menuItem) => {
+  return axios
+    .put(`${GET_MENU}/${menuItem.id}`, menuItem)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const deleteMenuItem = (id) => {
+  return axios.delete(`${GET_MENU}/${id}`).then((response) => {
+    return response.data;
+  });
+};
+
+export const getIceCreams = () => {               <-------- get ice cream call
+  return axios.get(GET_ICE_CREAM).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.name < b.name) {
+        return -1;
+      }
+      if (a.name > b.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+
+App.js
+--------
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Redirect,
+  Route,
+  Switch,
+} from "react-router-dom";
+import EditIceCream from "./ice-cream/EditIcecream";
+import IceCreams from "./ice-cream/IceCreams";
+import Menu from "./ice-cream/Menu";
+import Footer from "./structure/Footer";
+import Header from "./structure/Header";
+import "./styles/ice-cream.css";
+
+function App() {
+  return (
+    <Router>
+      <Header />
+      <Switch>
+        <Route path="/" component={Menu} exact />
+        <Route path="/ice-creams" component={IceCreams} exact />   <---- add new route for add iceream component
+        <Route path="/menu-item/:menuItemId" component={EditIceCream} exact />
+        <Redirect to="/" />
+      </Switch>
+      <Footer />
+    </Router>
+  );
+}
+
+export default App;
+

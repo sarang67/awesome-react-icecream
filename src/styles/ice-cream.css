@@ -357,7 +357,7 @@ main .form-frame .form-container form .checkbox-wrapper {
 main .form-frame .form-container form input,
 main .form-frame .form-container form select,
 main .form-frame .form-container form textarea {
-  margin-bottom: 1.5em;
+  /* margin-bottom: 1.5em; */
 }
 main .form-frame .form-container form input[type="checkbox"] {
   cursor: pointer;

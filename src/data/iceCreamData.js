@@ -6,6 +6,7 @@ import axios from "axios";
 // **********json server (db.json) end point ***********
 
 const GET_MENU = `http://localhost:5000/menuData`;
+const GET_ICE_CREAM = `http://localhost:5000/iceCreams`;
 
 export const getMenu = () => {
   return axios.get(GET_MENU).then((response) => {
@@ -37,4 +38,22 @@ export const putMenuItem = (menuItem) => {
     .catch((err) => {
       throw err;
     });
+};
+
+export const deleteMenuItem = (id) => {
+  return axios.delete(`${GET_MENU}/${id}`).then((response) => response.data);
+};
+
+export const getICeCreams = () => {
+  return axios.get(GET_ICE_CREAM).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.name < b.name) {
+        return -1;
+      }
+      if (a.name > b.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
 };
