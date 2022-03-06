@@ -632,3 +632,427 @@ const Header = () => {
 
 export default Header;
 
+08 Fetching the menu item in the edit component
+we make get request here and show in console for perticular item
+===============================================
+History.push v/s History.replace
+-----------------------------
+we use .replace instead of .push simply because we don't want the browser to record any invalid url I have visited.
+
+we personally use .replace when redirecting from an invalid url (or non relevant, i.e. redirect to "profile" page when a logged user goes to the "/login" url), so using the browser's "back" button works properly for the end user.
+
+History Push The user can go forward and backward in the browser and the url will change. It works like a programmatic link with no affect on current url.
+
+Location Replace The link of the page is set to the new one, but the user can't go between the replaced.
+
+
+
+iceCreamData.js
+------------------------
+
+import axios from "axios";
+
+// **************node server end point**********
+// const GET_MENU = `/api/menu`;
+// **********json server (db.json) end point ***********
+const GET_MENU = `http://localhost:5000/menuData`;
+
+export const getMenu = () => {
+  return axios.get(`${GET_MENU}`).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.iceCream.name < b.iceCream.name) {
+        return -1;
+      }
+      if (a.iceCream.name > b.iceCream.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+
+export const getMenuItem = (id) => {   <---- add a new call for get perticular menu item
+  return axios
+    .get(`${GET_MENU}/${id}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+EditIceCream.js
+----------------------------
+
+import React, { useState, useRef, useEffect } from "react";
+import { Helmet } from "react-helmet";
+import PropTypes from "prop-types";
+import { getMenuItem } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+const EditIceCream = ({ match, history }) => {
+  const [menuItem, setMenuItem] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;  <--- for preventing memroy leak
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getMenuItem(match.params.menuItemId)    <--- make the call here tp get item
+      .then(({ id, price, inStock, quantity, description, iceCream }) => {
+        if (isMounted.current) {
+          setMenuItem({
+            id,
+            price: price.toFixed(2),
+            inStock,
+            quantity: quantity.toString(),
+            description,
+            iceCream,
+          });
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.response.status === 404 && isMounted.current) {
+          history.replace("/");
+        }
+      });
+  }, [match.params.menuItemId, history]); <--- if route param change or history changes
+
+  console.log(menuItem);
+
+  return (
+    <main>
+      <Helmet>
+        <title>Update this component | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">
+        Edit ice cream component Update this component
+      </h2>
+      <LoaderMessage loadingMsg="Loading ice cream." isLoading={isLoading} /> <--- loader message
+    </main>
+  );
+};
+
+EditIceCream.propTypes = {   <--- add prop type
+  match: PropTypes.shape({
+    params: PropTypes.object.isRequired,
+  }),
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+    replace: PropTypes.func.isRequired,
+  }),
+};
+
+export default EditIceCream;
+
+
+09 Editing the data in a form 
+make complete form , controlled form , with new css file , and create a custom hooks, there
+============================
+First of All fix one issue in Menu.js component , we are sending wrong id from there
+error --> <IcecreamImage iceCreamId={id} />
+Fixed --> <IcecreamImage iceCreamId={iceCream.id} />
+
+/*
+Notes ==============>
+custom hooks https://dev.to/damcosset/how-to-create-custom-hooks-in-react-44nd
+---------
+The best part of hooks is that if you find a bit of logic inside your component function that you think would be useful elsewhere, you can put that in another function and call it from the components that need it (just like regular JavaScript). These functions you create are called “custom hooks”.
+
+A custom hook is a Javascript function that starts with `use` and that call can other `hooks`. Remember that components and hooks are functions, so we are really not creating any new concepts here.
+
+Rules of Hooks
+---------------
+Don’t call Hooks inside loops, conditions, or nested functions. Instead, always use Hooks at the top level of your React function, before any early returns. By following this rule, you ensure that Hooks are called in the same order each time a component renders. That’s what allows React to correctly preserve the state of Hooks between multiple useState and useEffect calls. 
+
+Only Call Hooks from React Functions
+------------------------------------
+A) Call Hooks from React function components.
+b) Call Hooks from custom Hooks
+
+*/
+
+two new files will be created for for this topic
+1) src\hooks\useUniqueIds.js 
+2) src\styles\forms-spacer.css
+
+a) src\styles\forms-spacer.css
+------------------------------
+create a new css file for some styling to input controls
+
+input,
+select,
+textarea {
+  margin-bottom: 1.5em;
+}
+
+
+B) EditIceCream.js
+------------------
+import React, { useState, useRef, useEffect } from "react";
+import { Helmet } from "react-helmet";
+import PropTypes from "prop-types";
+import { getMenuItem, putMenuItem } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+import IceCreamImage from "./IceCreamImage";     <---1) import new thing from here
+import "../styles/forms-spacer.css";
+import useUniqueIds from "../hooks/useUniqueIds";
+
+const EditIceCream = ({ match, history }) => {
+  const [menuItem, setMenuItem] = useState({  <---5) make default state
+    price: "0.00",
+    inStock: true,
+    quantity: "0",
+    description: "",
+    iceCream: {},
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const isMounted = useRef(true);
+
+  const [descriptionId, stockId, quantityId, priceId] = useUniqueIds(4); <---6) make custom hooks
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getMenuItem(match.params.menuItemId)
+      .then(({ id, price, inStock, quantity, description, iceCream }) => {
+        if (isMounted.current) {   
+          setMenuItem({
+            id,
+            price: price.toFixed(2),
+            inStock,
+            quantity: quantity.toString(),
+            description,
+            iceCream,
+          });
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.response.status === 404 && isMounted.current) {
+          history.replace("/");
+        }
+      });
+  }, [match.params.menuItemId, history]);
+
+  console.log(menuItem);
+
+  const onChangeHandler = (e) => {  <---3) create the onChangeHandler
+    let newMenuItemData = {
+      ...menuItem,
+      [e.target.name]:
+        e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    };
+
+    if (e.target.name === "quantity") {
+      newMenuItemData.inStock = e.target.value !== "0";
+    }
+
+    if (e.target.name === "inStock" && !e.target.checked) {
+      newMenuItemData.quantity = "0";
+    }
+
+    setMenuItem(newMenuItemData);
+  };
+
+  const onSubmitHandler = (e) => {   <---4) create the onSubmitHandler
+    e.preventDefault();
+
+    const { id, price, inStock, quantity, description, iceCream } = menuItem;
+    const submitItem = {
+      id,
+      iceCream,
+      price: parseFloat(price),
+      inStock,
+      quantity: parseInt(quantity),
+      description,
+    };
+
+    putMenuItem(submitItem).then(() => {
+      history.push("/", { focus: true });
+    });
+  };
+
+  return (
+    <main>
+      <Helmet>
+        <title>Update this component | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">
+        Edit ice cream component Update this component
+      </h2>
+      <LoaderMessage loadingMsg="Loading ice cream." isLoading={isLoading} />
+
+      {!isLoading && (
+        <div className="form-frame">   <---2) create the form
+          <div className="image-container">
+            <IceCreamImage iceCreamId={menuItem.iceCream.id} />
+          </div>
+          <div className="form-container">
+            <dl>
+              <dt>Name :</dt>
+              <dd>{menuItem.iceCream.name}</dd>
+            </dl>
+            <form onSubmit={onSubmitHandler}>
+              <label htmlFor={descriptionId}>Description :</label>
+              <textarea
+                id={descriptionId}
+                name="description"
+                rows="3"
+                onChange={onChangeHandler}
+                value={menuItem.description}
+              />
+              <label htmlFor={stockId}>In Stock :</label>
+              <div className="checkbox-wrapper">
+                <input
+                  id={stockId}
+                  type="checkbox"
+                  name="inStock"
+                  onChange={onChangeHandler}
+                  checked={menuItem.inStock}
+                />
+                <div className="checkbox-wrapper-checked" />
+              </div>
+              <label htmlFor={quantityId}>Quantity :</label>
+              <select
+                id={quantityId}
+                name="quantity"
+                onChange={onChangeHandler}
+                value={menuItem.quantity}
+              >
+                <option value="0">0</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="40">40</option>
+                <option value="50">50</option>
+              </select>
+              <label htmlFor={priceId}>Price :</label>
+              <input
+                id={priceId}
+                type="number"
+                step="0.01"
+                name="price"
+                onChange={onChangeHandler}
+                value={menuItem.price}
+              />
+              <div className="button-container">
+                <button className="ok" type="submit">
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+};
+
+EditIceCream.propTypes = {
+  match: PropTypes.shape({
+    params: PropTypes.object.isRequired,
+  }),
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+    replace: PropTypes.func.isRequired,
+  }),
+};
+
+export default EditIceCream;
+
+
+C)iceCreamData.js
+---------
+
+import axios from "axios";
+
+// **************node server end point**********
+//const GET_MENU = `/api/menu`;
+
+// **********json server (db.json) end point ***********
+
+const GET_MENU = `http://localhost:5000/menuData`;
+
+export const getMenu = () => {
+  return axios.get(GET_MENU).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.iceCream.name < b.iceCream.name) {
+        return -1;
+      }
+      if (a.iceCream.name > b.iceCream.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+export const getMenuItem = (id) => {
+  return axios
+    .get(`${GET_MENU}/${id}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const putMenuItem = (menuItem) => {   <----- api call for put or edit the data
+   return axios
+    .put(`${GET_MENU}/${menuItem.id}`, menuItem)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+
+
+D)IceCreamImage.js   <----update code form handling null/undefinfend id if after making not required
+------------------------------
+
+
+import React from "react";
+import PropTypes from "prop-types";
+
+const IcecreamImage = ({ iceCreamId }) => {
+  return iceCreamId ? (
+    <img
+      src={`/ice-cream-images/ice-cream-${iceCreamId.toString()}.svg`}
+      alt=""
+    />
+  ) : null;
+};
+
+IcecreamImage.propTypes = {
+  iceCreamId: PropTypes.number,
+};
+
+export default IcecreamImage;
+
+
+E) useUniqueIds.js   <--- create a new custom hooks
+------------------
+import { useRef } from "react";
+import uniqid from "uniqid";
+
+const useUniqueIds = (count) => {
+  const ids = useRef([...new Array(count)].map(() => uniqid()));
+
+  return ids.current;
+};
+
+export default useUniqueIds;
+
