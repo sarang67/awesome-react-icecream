@@ -20,3 +20,21 @@ export const getMenu = () => {
     });
   });
 };
+
+export const getMenuItem = (id) => {
+  return axios
+    .get(`${GET_MENU}/${id}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const putMenuItem = (menuItem) => {
+  return axios
+    .put(`${GET_MENU}/${menuItem.id}`, menuItem)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};

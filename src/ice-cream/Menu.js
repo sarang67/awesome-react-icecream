@@ -56,7 +56,7 @@ const Menu = ({ history }) => {
                     }
                   >
                     <div className="image-container">
-                      <IcecreamImage iceCreamId={id} />
+                      <IcecreamImage iceCreamId={iceCream.id} />
                     </div>
                     <div className="text-container">
                       <h3>
