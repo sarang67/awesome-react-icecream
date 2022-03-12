@@ -14,6 +14,10 @@ const Header = () => {
           <NavLink to="/" activeClassName="active" exact>
             Menu
           </NavLink>
+          <NavLink to="/ice-creams" activeClassName="active" exact>
+            Add Ice Cream
+          </NavLink>
+
           {/* <Link to="/" exact>
             Menu
           </Link> */}

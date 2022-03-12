@@ -2017,3 +2017,879 @@ function App() {
 
 export default App;
 
+
+14 Displaying the stock list
+===========================
+in this chapter we will make card component , which will show the image and detail , so this card component will be used by used by menu as well as bu iceCreams component for showing stock.
+
+create a new component IceCreamCard.js
+
+src\ice-cream\IceCreamCard.js
+==============================
+import React from "react";
+import IcecreamImage from "./IceCreamImage";
+import PropTypes from "prop-types";
+import { Link } from "react-router-dom";
+
+const IceCreamCard = ({ iceCreamId, heading, to, history, children }) => {
+  const onItemClickhandler = () => {
+    console.log(to);
+    history.push(to);
+  };
+
+  const onLinkClickhandler = (event) => {
+    event.stopPropagation();
+  };
+
+  return (
+    <section className="card" onClick={onItemClickhandler}>
+      <div className="image-container">
+        <IcecreamImage iceCreamId={iceCreamId} />
+      </div>
+      <div className="text-container">
+        <h3>
+          <Link to={to} onClick={onLinkClickhandler}>
+            {heading}
+          </Link>
+        </h3>
+        {children}
+      </div>
+    </section>
+  );
+};
+
+IceCreamCard.propTypes = {
+  iceCreamId: PropTypes.number.isRequired,
+  heading: PropTypes.string.isRequired,
+  to: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.shape({
+      pathname: PropTypes.string.isRequired,
+      focus: PropTypes.bool,
+    }),
+  ]).isRequired,
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+  }),
+  children: PropTypes.node,
+};
+
+export default IceCreamCard;
+
+Menu.js
+---------
+
+import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet";
+
+import { getMenu } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+import propTypes from "prop-types";
+import IceCreamCard from "./IceCreamCard";
+
+const Menu = ({ history }) => {
+  const [menu, setMenu] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getMenu().then((menudata) => {
+      if (isMounted) {
+        setMenu(menudata);
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Rock your taste buds with one of these | Awesome ice cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Rock your taste buds with one of these</h2>
+      <LoaderMessage loadingMessage="Loading Menu." isLoading={isLoading} />
+      {menu.length > 0 ? (
+        <ul className="container">
+          {menu.map(
+            ({ id, iceCream, inStock, quantity, price, description }) => {
+              return (
+                <li key={id.toString()}>
+                  <IceCreamCard
+                    iceCreamId={iceCream.id}
+                    heading={iceCream.name}
+                    to={`/menu-item/${id.toString()}`}
+                    history={history}
+                  >
+                    <div className="content card-content">
+                      <p className="price">{`$${price.toFixed(2)}`}</p>
+                      <p className={`stock${inStock ? "" : " out"}`}>
+                        {inStock
+                          ? `${quantity} in stock`
+                          : "currently out of stock !!!"}
+                      </p>
+                      <p className="description">{description}</p>
+                    </div>
+                  </IceCreamCard>
+                </li>
+              );
+            }
+          )}
+        </ul>
+      ) : (
+        !isLoading && <p>Menu is Empty ! the sadness :( !!! </p>
+      )}
+    </main>
+  );
+};
+
+Menu.prototype = {
+  history: propTypes.shape({ push: propTypes.func.isRequired }),
+};
+export default Menu;
+
+
+create a new component IceCreamCardContainer.js
+
+IceCreamCardContainer.js
+--------------------------
+import React from "react";
+import PropTypes from "prop-types";
+
+const IceCreamCardContainer = ({ children }) => (
+  <ul className="container">
+    {React.Children.map(children, (card) => (
+      <li>{card}</li>
+    ))}
+  </ul>
+);
+
+IceCreamCardContainer.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+export default IceCreamCardContainer;
+
+
+update again menu.js
+----------------------
+import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet";
+
+import { getMenu } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+import propTypes from "prop-types";
+import IceCreamCard from "./IceCreamCard";
+import IceCreamCardContainer from "./IceCreamCardContainer";
+
+const Menu = ({ history }) => {
+  const [menu, setMenu] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getMenu().then((menudata) => {
+      if (isMounted) {
+        setMenu(menudata);
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Rock your taste buds with one of these | Awesome ice cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Rock your taste buds with one of these</h2>
+      <LoaderMessage loadingMessage="Loading Menu." isLoading={isLoading} />
+      {menu.length > 0 ? (
+        <IceCreamCardContainer>
+          {menu.map(
+            ({ id, iceCream, inStock, quantity, price, description }) => {
+              return (
+                <IceCreamCard
+                  key={id.toString()}
+                  iceCreamId={iceCream.id}
+                  heading={iceCream.name}
+                  to={`/menu-item/${id.toString()}`}
+                  history={history}
+                >
+                  <div className="content card-content">
+                    <p className="price">{`$${price.toFixed(2)}`}</p>
+                    <p className={`stock${inStock ? "" : " out"}`}>
+                      {inStock
+                        ? `${quantity} in stock`
+                        : "currently out of stock !!!"}
+                    </p>
+                    <p className="description">{description}</p>
+                  </div>
+                </IceCreamCard>
+              );
+            }
+          )}
+        </IceCreamCardContainer>
+      ) : (
+        !isLoading && <p>Menu is Empty ! the sadness :( !!! </p>
+      )}
+    </main>
+  );
+};
+
+Menu.prototype = {
+  history: propTypes.shape({ push: propTypes.func.isRequired }),
+};
+export default Menu;
+
+
+update your stock --> iceCreams.js
+----------------------------------
+import React, { useEffect, useState } from "react";
+import LoaderMessage from "../structure/LoaderMessage";
+import { Helmet } from "react-helmet";
+import { getICeCreams } from "../data/iceCreamData";
+import IceCreamCard from "./IceCreamCard";
+import IceCreamCardContainer from "./IceCreamCardContainer";
+
+const IceCreams = ({ history }) => {
+  const [iceCreams, setIceCreams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getICeCreams().then((iceCreams) => {
+      if (isMounted) {
+        setIceCreams(iceCreams);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  console.log(iceCreams);
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Choose Your Awesome ice cream from stock| Awesome ice cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Choose Your Awesome ice cream from stock</h2>
+      <LoaderMessage
+        loadingMessage="Loading the stocks ice creams"
+        isLoading={isLoading}
+      />
+      {iceCreams.length > 0 ? (
+        <IceCreamCardContainer>
+          {iceCreams.map(({ id, name }) => (
+            <IceCreamCard
+              key={id.toString()}
+              iceCreamId={id}
+              heading={name}
+              to="/"
+              history={history}
+            />
+          ))}
+        </IceCreamCardContainer>
+      ) : (
+        !isLoading && (
+          <p className="fully-stocked">Your menu is fully stocked!</p>
+        )
+      )}
+    </main>
+  );
+};
+
+export default IceCreams;
+
+15 Extracting the edit form
+==========================
+here we will be creating a common form component which will work for  edit component to edit or delete item and for stock component for adding the new icecream from the stocks
+
+create a new component for extracting icec cream form logic src\ice-cream\IceCream.js
+----------------------------------------------------------------------------------
+import React, { useState, useEffect } from "react";
+import {
+  validateDescription,
+  validateQuantity,
+  validatePrice,
+} from "../utils/validators";
+import useValidators from "../hooks/useValidation";
+
+import useUniqueIds from "../hooks/useUniqueIds";
+import ErrorContainer from "./ErrorContainer";
+import IcecreamImage from "./IceCreamImage";
+
+const IceCream = ({
+  iceCream = {},
+  price = 0,
+  quantity = 0,
+  inStock = true,
+  description = "",
+  onDelete,
+  onSubmit,
+}) => {
+  const [descriptionId, stockId, quantityId, priceId] = useUniqueIds(4);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+
+  const [internalData, setInternalData] = useState({
+    price: "0.00",
+    inStock: true,
+    quantity: "0",
+    description: "",
+  });
+
+  const descriptionError = useValidators(
+    internalData.description,
+    validateDescription
+  );
+
+  const quantityError = useValidators(
+    internalData.quantity,
+    validateQuantity,
+    internalData.inStock
+  );
+
+  const priceError = useValidators(internalData.price, validatePrice);
+
+  useEffect(() => {
+    setInternalData({
+      price: price.toFixed(2),
+      inStock,
+      quantity: quantity.toString(),
+      description,
+    });
+  }, [price, quantity, inStock, description]);
+
+  const onSubmitHandler = (e) => {
+    setHasSubmitted(true);
+
+    console.log(descriptionError);
+    console.log(quantityError);
+    console.log(priceError);
+
+    e.preventDefault();
+    if (!descriptionError && !quantityError && !priceError) {
+      onSubmit({
+        iceCream: { id: iceCream.id, name: iceCream.name },
+        price: parseFloat(internalData.price),
+        inStock: internalData.inStock,
+        quantity: parseInt(internalData.quantity),
+        description: internalData.description,
+      });
+    }
+  };
+
+  const onChangeHandler = (e) => {
+    let newMenuItemData = {
+      ...internalData,
+      [e.target.name]:
+        e.target.type === "checkbox" ? e.target.checked : e.target.value,
+    };
+
+    if (e.target.name === "quantity") {
+      newMenuItemData.inStock = e.target.value !== "0";
+    }
+
+    if (e.target.name === "inStock" && !e.target.checked) {
+      newMenuItemData.quantity = "0";
+    }
+
+    setInternalData(newMenuItemData);
+  };
+
+  return (
+    <div className="form-frame">
+      <div className="image-container">
+        <IcecreamImage iceCreamId={iceCream.id} />
+      </div>
+      <div className="form-container">
+        <dl>
+          <dt>Name :</dt>
+          <dd>{iceCream.name}</dd>
+        </dl>
+        <form onSubmit={onSubmitHandler}>
+          <label htmlFor={descriptionId}>Description :</label>
+          <ErrorContainer
+            errorText={descriptionError}
+            hasSubmitted={hasSubmitted}
+          >
+            <textarea
+              id={descriptionId}
+              name="description"
+              rows="3"
+              onChange={onChangeHandler}
+              value={internalData.description}
+            />
+          </ErrorContainer>
+
+          <label htmlFor={stockId}>In Stock :</label>
+          <div className="checkbox-wrapper">
+            <input
+              id={stockId}
+              type="checkbox"
+              name="inStock"
+              onChange={onChangeHandler}
+              checked={internalData.inStock}
+            />
+            <div className="checkbox-wrapper-checked" />
+          </div>
+          <label htmlFor={quantityId}>Quantity :</label>
+          <ErrorContainer errorText={quantityError} hasSubmitted={hasSubmitted}>
+            <select
+              id={quantityId}
+              name="quantity"
+              onChange={onChangeHandler}
+              value={internalData.quantity}
+            >
+              <option value="0">0</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+              <option value="40">40</option>
+              <option value="50">50</option>
+            </select>
+          </ErrorContainer>
+          <label htmlFor={priceId}>Price :</label>
+          <ErrorContainer errorText={priceError} hasSubmitted={hasSubmitted}>
+            <input
+              id={priceId}
+              type="number"
+              step="0.01"
+              name="price"
+              onChange={onChangeHandler}
+              value={internalData.price}
+            />
+          </ErrorContainer>
+          <div className="button-container">
+            <button className="ok" type="submit">
+              Save
+            </button>
+            {onDelete ? (
+              <button className="warning" type="button" onClick={onDelete}>
+                Delete
+              </button>
+            ) : null}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default IceCream;
+
+
+update EditIcecream.js for updating the logic to extract form
+-------------------------------------------------------------
+import React, { useState, useRef, useEffect } from "react";
+import { Helmet } from "react-helmet";
+import PropTypes from "prop-types";
+import { deleteMenuItem, getMenuItem, putMenuItem } from "../data/iceCreamData";
+import LoaderMessage from "../structure/LoaderMessage";
+
+import "../styles/forms-spacer.css";
+
+import IceCream from "./IceCream";
+
+const EditIceCream = ({ match, history }) => {
+  const [menuItem, setMenuItem] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getMenuItem(match.params.menuItemId)
+      .then((item) => {
+        if (isMounted.current) {
+          setMenuItem(item);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.response.status === 404 && isMounted.current) {
+          history.replace("/");
+        }
+      });
+  }, [match.params.menuItemId, history]);
+
+  const onSubmitHandler = (updatedItem) => {
+    putMenuItem({ id: menuItem.id, ...updatedItem }).then(() => {
+      history.push("/");
+    });
+  };
+
+  const onDeleteHandler = () => {
+    deleteMenuItem(match.params.menuItemId).then((data) => {
+      console.log(data);
+      history.replace("/");
+    });
+  };
+  return (
+    <main>
+      <Helmet>
+        <title>Update this component | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">
+        Edit ice cream component Update this component
+      </h2>
+      <LoaderMessage
+        loadingMessage="Loading ice cream."
+        isLoading={isLoading}
+      />
+
+      {!isLoading && (
+        <IceCream
+          {...menuItem}
+          onDelete={onDeleteHandler}
+          onSubmit={onSubmitHandler}
+        />
+      )}
+    </main>
+  );
+};
+
+EditIceCream.propTypes = {
+  match: PropTypes.shape({
+    params: PropTypes.object.isRequired,
+  }),
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+    replace: PropTypes.func.isRequired,
+  }),
+};
+
+export default EditIceCream;
+
+
+
+16 Creating the add page
+=============================
+in this chapter we will create route for add ice cream  component , and where we will use search query parameter in url , how we can get any query param from match object same way we can get serach param which start from question mark url we get from location object.
+
+1) create new AddIceCream.js
+2) make get call for single stock item , and post  call for add ice cream in menudata.
+3) here we will use query serachparam ? (http://localhost:3000/menu-items/add?iceCreamId=5)
+4) below syntax help us to construct url if we pass to props in Link component like below it will automatically joined by Link route
+
+to={{
+	pathname: "/menu-items/add",
+	search: `?iceCreamId=${id.toString()}`,
+}}
+
+Link url will be genrated ---> menu-items/add?iceCreamId=5
+
+
+
+ice-cream\AddIceCream.js
+----------------
+import React, { useEffect, useState, useRef } from "react";
+import LoaderMessage from "../structure/LoaderMessage";
+import IceCream from "./IceCream";
+import { getIceCream, postMenuItem } from "../data/iceCreamData";
+import PropTypes from "prop-types";
+import Helmet from "react-helmet";
+
+const AddIceCream = ({ location, history }) => {
+  const isMounted = useRef(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [iceCream, setIceCream] = useState({});
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getIceCream(location.search.split("=")[1])
+      .then((item) => {
+        if (isMounted.current) {
+          setIceCream(item);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (err.response.status === 404 && isMounted.current) {
+          history.replace("/", { focus: true });
+        }
+      });
+  }, [history, location.search]);
+
+  const onSubmitHandler = (menuItem) => {
+    postMenuItem(menuItem).then(() => {
+      history.push("/", { focus: true });
+    });
+  };
+
+  return (
+    <main>
+      <Helmet>
+        <title>Add some goodness to the menu | Awesome Ice Cream </title>
+      </Helmet>
+      <h2 className="main-heading">Add some goodness to the menu</h2>
+      <LoaderMessage loadingMsg="Loading ice cream." isLoading={isLoading} />
+
+      {!isLoading && (
+        <IceCream iceCream={iceCream} onSubmit={onSubmitHandler} />
+      )}
+    </main>
+  );
+};
+
+AddIceCream.propTypes = {
+  location: PropTypes.shape({
+    search: PropTypes.string.isRequired,
+  }),
+  history: PropTypes.shape({
+    push: PropTypes.func.isRequired,
+    replace: PropTypes.func.isRequired,
+  }),
+};
+
+export default AddIceCream;
+
+
+src\data\iceCreamData.js
+--------------------------
+import axios from "axios";
+
+// **************node server end point**********
+//const GET_MENU = `/api/menu`;
+
+// **********json server (db.json) end point ***********
+
+const GET_MENU = `http://localhost:5000/menuData`;
+const GET_ICE_CREAM = `http://localhost:5000/iceCreams`;
+
+export const getMenu = () => {
+  return axios.get(GET_MENU).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.iceCream.name < b.iceCream.name) {
+        return -1;
+      }
+      if (a.iceCream.name > b.iceCream.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+export const getMenuItem = (id) => {
+  return axios
+    .get(`${GET_MENU}/${id}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const putMenuItem = (menuItem) => {
+  return axios
+    .put(`${GET_MENU}/${menuItem.id}`, menuItem)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const deleteMenuItem = (id) => {
+  return axios.delete(`${GET_MENU}/${id}`).then((response) => response.data);
+};
+
+export const getICeCreams = () => {
+  return axios.get(GET_ICE_CREAM).then((response) => {
+    return response.data.sort((a, b) => {
+      if (a.name < b.name) {
+        return -1;
+      }
+      if (a.name > b.name) {
+        return 1;
+      }
+      return 0;
+    });
+  });
+};
+
+export const getIceCream = (id) => {
+  return axios
+    .get(`${GET_ICE_CREAM}/${id.toString()}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const postMenuItem = (menuItem) => {
+  return axios
+    .post(GET_MENU, menuItem)
+    .then((response) => {
+      return response.data;
+    })
+    .catch((err) => {
+      throw err;
+    });
+};
+
+App.js
+-----
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Redirect,
+  Route,
+  Switch,
+} from "react-router-dom";
+import AddIceCream from "./ice-cream/AddIceCream";
+import EditIceCream from "./ice-cream/EditIcecream";
+import IceCreams from "./ice-cream/iceCreams";
+import Menu from "./ice-cream/Menu";
+import Footer from "./structure/Footer";
+import Header from "./structure/Header";
+import "./styles/ice-cream.css";
+
+function App() {
+  return (
+    <Router>
+      <Header />
+      <Switch>
+        <Route path="/" component={Menu} exact />
+        <Route path="/ice-creams" component={IceCreams} />
+        <Route path="/menu-items/add" component={AddIceCream} exact />
+        <Route path="/menu-item/:menuItemId" component={EditIceCream} exact />
+        <Redirect to="/" />
+      </Switch>
+      <Footer />
+    </Router>
+  );
+}
+
+export default App;
+
+
+Header.js
+---------
+import React from "react";
+import { Link, NavLink } from "react-router-dom";
+import icecream from "../assets/img/ultimate-ice-cream.svg";
+
+const Header = () => {
+  return (
+    <header>
+      <h1>
+        <img src={icecream} alt="" />
+        Awesome ice cream.
+      </h1>
+      <nav>
+        <ul>
+          <NavLink to="/" activeClassName="active" exact>
+            Menu
+          </NavLink>
+          <NavLink to="/ice-creams" activeClassName="active" exact>
+            Add Ice Cream
+          </NavLink>
+
+          {/* <Link to="/" exact>
+            Menu
+          </Link> */}
+        </ul>
+      </nav>
+    </header>
+  );
+};
+
+export default Header;
+
+iceCreams.js
+------------
+import React, { useEffect, useState } from "react";
+import LoaderMessage from "../structure/LoaderMessage";
+import { Helmet } from "react-helmet";
+import { getICeCreams } from "../data/iceCreamData";
+import IceCreamCard from "./IceCreamCard";
+import IceCreamCardContainer from "./IceCreamCardContainer";
+
+const IceCreams = ({ history }) => {
+  const [iceCreams, setIceCreams] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    getICeCreams().then((iceCreams) => {
+      if (isMounted) {
+        setIceCreams(iceCreams);
+        setIsLoading(false);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  console.log(iceCreams);
+  return (
+    <main>
+      <Helmet>
+        <title>
+          Choose Your Awesome ice cream from stock| Awesome ice cream
+        </title>
+      </Helmet>
+
+      <h2 className="main-heading">Choose Your Awesome ice cream from stock</h2>
+      <LoaderMessage
+        loadingMessage="Loading the stocks ice creams"
+        isLoading={isLoading}
+      />
+      {iceCreams.length > 0 ? (
+        <IceCreamCardContainer>
+          {iceCreams.map(({ id, name }) => (
+            <IceCreamCard
+              key={id.toString()}
+              iceCreamId={id}
+              heading={name}
+              to={{
+                pathname: "/menu-items/add",
+                search: `?iceCreamId=${id.toString()}`,
+              }}
+              history={history}
+            />
+          ))}
+        </IceCreamCardContainer>
+      ) : (
+        !isLoading && (
+          <p className="fully-stocked">Your menu is fully stocked!</p>
+        )
+      )}
+    </main>
+  );
+};
+
+export default IceCreams;
+

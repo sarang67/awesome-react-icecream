@@ -57,3 +57,23 @@ export const getICeCreams = () => {
     });
   });
 };
+
+export const getIceCream = (id) => {
+  return axios
+    .get(`${GET_ICE_CREAM}/${id.toString()}`)
+    .then((response) => response.data)
+    .catch((err) => {
+      throw err;
+    });
+};
+
+export const postMenuItem = (menuItem) => {
+  return axios
+    .post(GET_MENU, menuItem)
+    .then((response) => {
+      return response.data;
+    })
+    .catch((err) => {
+      throw err;
+    });
+};

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
-import { Link } from "react-router-dom";
+
 import { getMenu } from "../data/iceCreamData";
 import LoaderMessage from "../structure/LoaderMessage";
-import IcecreamImage from "./IceCreamImage";
+
 import propTypes from "prop-types";
+import IceCreamCard from "./IceCreamCard";
+import IceCreamCardContainer from "./IceCreamCardContainer";
 
 const Menu = ({ history }) => {
   const [menu, setMenu] = useState([]);
@@ -24,15 +26,6 @@ const Menu = ({ history }) => {
     };
   }, []);
 
-  const onItemClickhandler = (to) => {
-    console.log(to);
-    history.push(to);
-  };
-
-  const onLinkClickhandler = (event) => {
-    event.stopPropagation();
-  };
-
   return (
     <main>
       <Helmet>
@@ -44,45 +37,31 @@ const Menu = ({ history }) => {
       <h2 className="main-heading">Rock your taste buds with one of these</h2>
       <LoaderMessage loadingMessage="Loading Menu." isLoading={isLoading} />
       {menu.length > 0 ? (
-        <ul className="container">
+        <IceCreamCardContainer>
           {menu.map(
             ({ id, iceCream, inStock, quantity, price, description }) => {
               return (
-                <li key={id.toString()}>
-                  <section
-                    className="card"
-                    onClick={() =>
-                      onItemClickhandler(`/menu-item/${id.toString()}`)
-                    }
-                  >
-                    <div className="image-container">
-                      <IcecreamImage iceCreamId={iceCream.id} />
-                    </div>
-                    <div className="text-container">
-                      <h3>
-                        <Link
-                          to={`/menu-item/${id.toString()}`}
-                          onClick={onLinkClickhandler}
-                        >
-                          {iceCream.name}
-                        </Link>
-                      </h3>
-                      <div className="content card-content">
-                        <p className="price">{`$${price.toFixed(2)}`}</p>
-                        <p className={`stock${inStock ? "" : " out"}`}>
-                          {inStock
-                            ? `${quantity} in stock`
-                            : "currently out of stock !!!"}
-                        </p>
-                        <p className="description">{description}</p>
-                      </div>
-                    </div>
-                  </section>
-                </li>
+                <IceCreamCard
+                  key={id.toString()}
+                  iceCreamId={iceCream.id}
+                  heading={iceCream.name}
+                  to={`/menu-item/${id.toString()}`}
+                  history={history}
+                >
+                  <div className="content card-content">
+                    <p className="price">{`$${price.toFixed(2)}`}</p>
+                    <p className={`stock${inStock ? "" : " out"}`}>
+                      {inStock
+                        ? `${quantity} in stock`
+                        : "currently out of stock !!!"}
+                    </p>
+                    <p className="description">{description}</p>
+                  </div>
+                </IceCreamCard>
               );
             }
           )}
-        </ul>
+        </IceCreamCardContainer>
       ) : (
         !isLoading && <p>Menu is Empty ! the sadness :( !!! </p>
       )}

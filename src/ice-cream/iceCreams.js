@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import LoaderMessage from "../structure/LoaderMessage";
 import { Helmet } from "react-helmet";
 import { getICeCreams } from "../data/iceCreamData";
+import IceCreamCard from "./IceCreamCard";
+import IceCreamCardContainer from "./IceCreamCardContainer";
 
-const IceCreams = ({}) => {
+const IceCreams = ({ history }) => {
   const [iceCreams, setIceCreams] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -34,6 +36,26 @@ const IceCreams = ({}) => {
         loadingMessage="Loading the stocks ice creams"
         isLoading={isLoading}
       />
+      {iceCreams.length > 0 ? (
+        <IceCreamCardContainer>
+          {iceCreams.map(({ id, name }) => (
+            <IceCreamCard
+              key={id.toString()}
+              iceCreamId={id}
+              heading={name}
+              to={{
+                pathname: "/menu-items/add",
+                search: `?iceCreamId=${id.toString()}`,
+              }}
+              history={history}
+            />
+          ))}
+        </IceCreamCardContainer>
+      ) : (
+        !isLoading && (
+          <p className="fully-stocked">Your menu is fully stocked!</p>
+        )
+      )}
     </main>
   );
 };
